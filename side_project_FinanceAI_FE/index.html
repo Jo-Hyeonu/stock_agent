@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>금융 AI 대시보드</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent; /* 모바일 클릭 시 하이라이트 제거 */
+        }
+        /* 애니메이션을 위한 커스텀 CSS */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .slide-up {
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(100%); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 9999px;
+        }
+        .badge-hold { background-color: #f3f4f6; color: #4b5563; }
+        .badge-buy { background-color: #dbeafe; color: #1d4ed8; }
+        .badge-sell { background-color: #fee2e2; color: #b91c1c; }
+        .hidden { display: none; }
+        
+        /* 가격 변화 애니메이션 */
+        .price-up {
+            background-color: #dcfce7;
+            animation: priceUpBlink 2s ease-out;
+        }
+        .price-down {
+            background-color: #fef2f2;
+            animation: priceDownBlink 2s ease-out;
+        }
+        
+        @keyframes priceUpBlink {
+            0% { background-color: #16a34a; color: white; }
+            100% { background-color: transparent; color: inherit; }
+        }
+        
+        @keyframes priceDownBlink {
+            0% { background-color: #dc2626; color: white; }
+            100% { background-color: transparent; color: inherit; }
+        }
+        
+        /* 실시간 업데이트 버튼 스타일 */
+        .update-btn {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 40;
+        }
+        
+        .update-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        }
+        
+        .update-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="bg-gray-200">
+
+    <div class="max-w-md mx-auto bg-gray-50 min-h-screen shadow-2xl">
+        <!-- 앱 컨테이너 -->
+        <div id="app-container">
+
+            <!-- 대시보드 뷰 -->
+            <div id="dashboard-view" class="fade-in">
+                <!-- 헤더, 자산 요약 등 기존 대시보드 내용은 동일합니다 -->
+                <header class="p-6 pb-4">
+                    <h1 class="text-2xl font-bold text-gray-800">대시보드</h1>
+                </header>
+
+                <div class="px-6 pb-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm">
+                        <p class="text-sm text-gray-500">나의 총 자산</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2">₩ 12,345,678</p>
+                    </div>
+                </div>
+
+                <div class="px-6 pb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">나의 포트폴리오</h2>
+                        <a href="#" id="view-all-portfolio" class="text-sm text-gray-500 hover:text-gray-800">전체보기</a>
+                    </div>
+                    <div id="portfolio-list" class="space-y-3">
+                        <!-- 포트폴리오 아이템 미리보기 (4개) -->
+                    </div>
+                </div>
+
+                <div class="px-6 pb-24">
+                     <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">관심 종목</h2>
+                        <a href="#" class="text-sm text-gray-500 hover:text-gray-800">편집</a>
+                    </div>
+                    <div id="watchlist" class="space-y-3">
+                        <!-- 관심 종목 아이템 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 포트폴리오 전체보기 뷰 (새로 추가) -->
+            <div id="portfolio-view" class="hidden fade-in">
+                <header class="p-6 flex justify-between items-center">
+                    <button id="back-to-dashboard-from-portfolio" class="text-gray-600 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <h1 class="text-xl font-bold text-gray-800">나의 포트폴리오</h1>
+                    <button id="add-stock-btn" class="text-blue-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </button>
+                </header>
+                <div id="full-portfolio-list" class="px-6 pb-24 space-y-3">
+                    <!-- 전체 포트폴리오 아이템이 여기에 렌더링됩니다 -->
+                </div>
+            </div>
+
+            <!-- 종목 상세 뷰 -->
+            <div id="detail-view" class="hidden fade-in p-6">
+                <!-- 상세 뷰 내용은 기존과 동일합니다 -->
+                <button id="back-btn" class="mb-4 text-gray-600 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                    뒤로가기
+                </button>
+                <div id="detail-content"></div>
+            </div>
+
+        </div>
+
+        <!-- 실시간 가격 업데이트 버튼 -->
+        <button id="price-update-btn" class="update-btn" title="가격 업데이트">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+        </button>
+
+        <!-- 하단 네비게이션 -->
+        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 h-20 flex justify-around items-center">
+            <!-- 네비게이션 아이콘은 기존과 동일합니다 -->
+            <a href="#" class="text-blue-600 flex flex-col items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
+                <span class="text-xs mt-1">홈</span>
+            </a>
+            <a href="#" class="text-gray-500 hover:text-blue-600 flex flex-col items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 012-2h2a2 2 0 012 2v6m-6 0h6M9 19a2 2 0 00-2 2h10a2 2 0 00-2-2M9 19V5a2 2 0 012-2h2a2 2 0 012 2v14m-6 0h6" /></svg>
+                <span class="text-xs mt-1">자산</span>
+            </a>
+             <a href="#" class="text-gray-500 hover:text-blue-600 flex flex-col items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <span class="text-xs mt-1">리포트</span>
+            </a>
+            <a href="#" class="text-gray-500 hover:text-blue-600 flex flex-col items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                <span class="text-xs mt-1">전체</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- 종목 추가 모달 (새로 추가) -->
+    <div id="add-stock-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
+        <div class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-gray-100 rounded-t-2xl p-6 slide-up">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">종목 추가</h2>
+                <button id="close-modal-btn" class="text-gray-500">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="relative">
+                <input type="text" id="search-stock-input" placeholder="종목명 또는 코드를 검색하세요" class="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute top-3.5 right-3 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" /></svg>
+            </div>
+            <div id="search-results-list" class="mt-4 max-h-60 overflow-y-auto">
+                <!-- 검색 결과가 여기에 표시됩니다. -->
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // --- API 설정 ---
+        const API_BASE_URL = 'http://localhost:8000';
+        const WS_URL = 'ws://localhost:8000/ws/1'; // 사용자 ID 1로 고정
+        
+        // WebSocket 연결
+        let websocket = null;
+        let reconnectInterval = null;
+        
+        // --- Mock 데이터 (초기 데이터) ---
+        let myPortfolioData = [
+            { id: '005930', name: '삼성전자', icon: 'S', price: '82,600', change: '+1.22%', value: '5,120,500', strategy: '관망' },
+            { id: '000660', name: 'SK하이닉스', icon: 'H', price: '131,000', change: '-0.76%', value: '3,210,000', strategy: '추가 매수' },
+            { id: '035420', name: 'NAVER', icon: 'N', price: '298,000', change: '+2.45%', value: '2,580,100', strategy: '관망' },
+            { id: '035720', name: '카카오', icon: 'K', price: '121,500', change: '-1.22%', value: '1,425,078', strategy: '매도' },
+            { id: '005380', name: '현대차', icon: 'H', price: '228,000', change: '-0.87%', value: '1,120,000', strategy: '관망' },
+        ];
+
+        let myWatchlistData = [
+            { id: '068270', name: '셀트리온', icon: 'C', price: '287,500', change: '+3.60%', signal: '매수 시점' },
+            { id: '207940', name: '삼성바이오로직스', icon: 'B', price: '811,000', change: '+0.12%', signal: null },
+        ];
+
+        // 검색 가능한 모든 종목에 대한 Mock 데이터 (실제로는 백엔드에서 검색 결과를 받아와야 합니다)
+        const allStocks = [
+            { id: '066570', name: 'LG전자', icon: 'L', price: '160,000', change: '+1.5%'},
+            { id: '051910', name: 'LG화학', icon: 'L', price: '800,000', change: '-0.5%'},
+            { id: '000270', name: '기아', icon: 'K', price: '85,000', change: '+2.1%'},
+            ...myPortfolioData,
+            ...myWatchlistData
+        ];
+
+
+        // --- DOM 요소 ---
+        const appContainer = document.getElementById('app-container');
+        const portfolioList = document.getElementById('portfolio-list');
+        const fullPortfolioList = document.getElementById('full-portfolio-list');
+        const watchlist = document.getElementById('watchlist');
+        
+        const dashboardView = document.getElementById('dashboard-view');
+        const portfolioView = document.getElementById('portfolio-view');
+        const detailView = document.getElementById('detail-view');
+        
+        const detailContent = document.getElementById('detail-content');
+        const backBtn = document.getElementById('back-btn');
+        const viewAllPortfolioBtn = document.getElementById('view-all-portfolio');
+        const backToDashboardFromPortfolioBtn = document.getElementById('back-to-dashboard-from-portfolio');
+
+        const addStockBtn = document.getElementById('add-stock-btn');
+        const addStockModal = document.getElementById('add-stock-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const searchStockInput = document.getElementById('search-stock-input');
+        const searchResultsList = document.getElementById('search-results-list');
+
+        let previousView = 'dashboard'; // 상세 뷰에서 돌아갈 뷰를 추적
+
+        // --- 렌더링 함수 ---
+        function getStrategyBadge(strategy) {
+            if (strategy === '관망') return `<span class="badge badge-hold">${strategy}</span>`;
+            if (strategy === '추가 매수') return `<span class="badge badge-buy">${strategy}</span>`;
+            if (strategy === '매도') return `<span class="badge badge-sell">${strategy}</span>`;
+            return '';
+        }
+        
+        function createStockItemHTML(stock) {
+             return `
+                <div data-id="${stock.id}" class="stock-item bg-white p-4 rounded-xl shadow-sm flex items-center cursor-pointer hover:bg-gray-100 transition-colors">
+                    <div class="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xl mr-4">${stock.icon}</div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center">
+                            <span class="font-semibold text-gray-800">${stock.name}</span>
+                            <span class="font-bold text-gray-900 stock-price">₩ ${stock.value || stock.price}</span>
+                        </div>
+                        <div class="flex justify-between items-center mt-1">
+                             <div class="text-sm flex items-center ${stock.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}">
+                                <span>${stock.value ? `₩ ${stock.price}` : ''}</span>
+                                <span class="ml-2">(${stock.change})</span>
+                            </div>
+                            ${stock.strategy ? getStrategyBadge(stock.strategy) : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderPortfolioPreview() {
+            portfolioList.innerHTML = myPortfolioData.slice(0, 4).map(createStockItemHTML).join('');
+        }
+        
+        function renderFullPortfolio() {
+            fullPortfolioList.innerHTML = myPortfolioData.map(createStockItemHTML).join('');
+        }
+
+        function renderWatchlist() {
+            watchlist.innerHTML = myWatchlistData.map(stock => `
+                <div data-id="${stock.id}" class="stock-item bg-white p-4 rounded-xl shadow-sm flex items-center cursor-pointer hover:bg-gray-100 transition-colors">
+                    <div class="w-10 h-10 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xl mr-4">${stock.icon}</div>
+                    <div class="flex-1">
+                        <span class="font-semibold text-gray-800">${stock.name}</span>
+                        ${stock.signal ? `<span class="ml-2 text-xs font-bold text-blue-600 animate-pulse">🔥 ${stock.signal}</span>` : ''}
+                    </div>
+                    <div class="text-right">
+                        <span class="font-semibold text-gray-800">₩ ${stock.price}</span>
+                        <p class="text-sm ${stock.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}">${stock.change}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function renderDetail(stockId) {
+            const stockData = [...myPortfolioData, ...myWatchlistData].find(s => s.id === stockId);
+            if (!stockData) return;
+            // 상세 뷰 렌더링 코드는 기존과 동일
+            detailContent.innerHTML = `<h2 class="text-2xl font-bold">${stockData.name} 상세 정보</h2>`;
+        }
+
+        function renderSearchResults(query) {
+            if (!query) {
+                searchResultsList.innerHTML = `<p class="text-center text-gray-500">검색어를 입력해주세요.</p>`;
+                return;
+            }
+            const results = allStocks.filter(stock => 
+                (stock.name.toLowerCase().includes(query.toLowerCase()) || stock.id.includes(query)) &&
+                !myPortfolioData.some(p => p.id === stock.id)
+            );
+            
+            if (results.length === 0) {
+                 searchResultsList.innerHTML = `<p class="text-center text-gray-500">검색 결과가 없습니다.</p>`;
+                 return;
+            }
+
+            searchResultsList.innerHTML = results.map(stock => `
+                <div class="flex items-center justify-between p-3 hover:bg-gray-200 rounded-lg">
+                    <div>
+                        <p class="font-semibold">${stock.name}</p>
+                        <p class="text-sm text-gray-500">${stock.id}</p>
+                    </div>
+                    <button data-id="${stock.id}" class="add-new-stock-btn bg-blue-500 text-white text-sm font-semibold px-4 py-1.5 rounded-full hover:bg-blue-600">추가</button>
+                </div>
+            `).join('');
+        }
+
+        // --- 뷰 전환 함수 ---
+        function showView(viewToShow) {
+            [dashboardView, portfolioView, detailView].forEach(view => view.classList.add('hidden'));
+            viewToShow.classList.remove('hidden');
+        }
+
+        function showDetailView(stockId, fromView) {
+            previousView = fromView;
+            renderDetail(stockId);
+            showView(detailView);
+            window.scrollTo(0, 0);
+        }
+        
+        // --- 모달 관리 함수 ---
+        function showAddStockModal() {
+            addStockModal.classList.remove('hidden');
+            searchStockInput.focus();
+            renderSearchResults(''); // 초기 상태
+        }
+        
+        function hideAddStockModal() {
+            addStockModal.classList.add('hidden');
+            searchStockInput.value = '';
+        }
+
+
+        // --- WebSocket 관리 ---
+        function connectWebSocket() {
+            try {
+                websocket = new WebSocket(WS_URL);
+                
+                websocket.onopen = function(event) {
+                    console.log('WebSocket 연결됨');
+                    showNotification('서버에 연결되었습니다', 'success');
+                    
+                    // 알림 구독 설정
+                    websocket.send(JSON.stringify({
+                        type: 'SUBSCRIBE_NOTIFICATIONS',
+                        types: ['STRATEGY_CHANGE', 'NEWS_ALERT', 'MARKET_ALERT']
+                    }));
+                };
+                
+                websocket.onmessage = function(event) {
+                    const message = JSON.parse(event.data);
+                    handleWebSocketMessage(message);
+                };
+                
+                websocket.onclose = function(event) {
+                    console.log('WebSocket 연결 끊김');
+                    showNotification('서버 연결이 끊어졌습니다', 'warning');
+                    
+                    // 자동 재연결 시도
+                    reconnectInterval = setTimeout(() => {
+                        console.log('WebSocket 재연결 시도...');
+                        connectWebSocket();
+                    }, 5000);
+                };
+                
+                websocket.onerror = function(error) {
+                    console.error('WebSocket 오류:', error);
+                    showNotification('서버 연결 오류가 발생했습니다', 'error');
+                };
+                
+            } catch (error) {
+                console.error('WebSocket 연결 실패:', error);
+                showNotification('서버 연결에 실패했습니다', 'error');
+            }
+        }
+        
+        function handleWebSocketMessage(message) {
+            console.log('WebSocket 메시지 수신:', message);
+            
+            switch (message.type) {
+                case 'STRATEGY_CHANGE':
+                    handleStrategyChangeNotification(message.data);
+                    break;
+                    
+                case 'NEWS_ALERT':
+                    handleNewsAlert(message.data);
+                    break;
+                    
+                case 'MARKET_ALERT':
+                    handleMarketAlert(message.data);
+                    break;
+                    
+                case 'CONNECTION_ESTABLISHED':
+                    console.log('연결 확인:', message.message);
+                    break;
+                    
+                case 'RECENT_STRATEGY_CHANGES':
+                    handleRecentStrategyChanges(message.data);
+                    break;
+                
+                case 'PRICE_UPDATE':
+                    handlePriceUpdate(message.data);
+                    break;
+                    
+                default:
+                    console.log('알 수 없는 메시지 타입:', message.type);
+            }
+        }
+        
+        function handleStrategyChangeNotification(data) {
+            const changes = data.changes;
+            
+            changes.forEach(change => {
+                // 포트폴리오 데이터 업데이트
+                const portfolio = myPortfolioData.find(p => p.id === change.stock_code);
+                if (portfolio) {
+                    portfolio.strategy = change.new_strategy === 'BUY' ? '추가 매수' : 
+                                       change.new_strategy === 'SELL' ? '매도' : '관망';
+                }
+                
+                // 알림 표시
+                showStrategyChangeNotification(change);
+            });
+            
+            // UI 업데이트
+            renderPortfolioPreview();
+            renderFullPortfolio();
+        }
+        
+        function handleNewsAlert(data) {
+            showNewsAlert(data);
+        }
+        
+        function handleMarketAlert(data) {
+            showMarketAlert(data);
+        }
+        
+        function handleRecentStrategyChanges(data) {
+            if (data.count > 0) {
+                showNotification(`최근 24시간 동안 ${data.count}건의 전략 변경이 있었습니다`, 'info');
+            }
+        }
+        
+        function handlePriceUpdate(data) {
+            const portfolios = data.portfolios;
+            
+            portfolios.forEach(portfolio => {
+                // 포트폴리오 데이터 업데이트
+                const existingPortfolio = myPortfolioData.find(p => p.id === portfolio.stock_code);
+                if (existingPortfolio) {
+                    // 가격 변화 애니메이션을 위한 이전 가격 저장
+                    const oldPrice = parseFloat(existingPortfolio.price.replace(/,/g, ''));
+                    const newPrice = portfolio.current_price;
+                    
+                    // 데이터 업데이트
+                    existingPortfolio.price = newPrice.toLocaleString();
+                    existingPortfolio.value = portfolio.total_value.toLocaleString();
+                    
+                    // 수익률 계산 및 표시
+                    if (portfolio.profit_loss_rate !== undefined) {
+                        const changeSign = portfolio.profit_loss_rate >= 0 ? '+' : '';
+                        existingPortfolio.change = `${changeSign}${portfolio.profit_loss_rate.toFixed(2)}%`;
+                    }
+                    
+                    // 가격 변화 애니메이션 효과
+                    animatePriceChange(portfolio.stock_code, oldPrice, newPrice);
+                }
+            });
+            
+            // UI 업데이트
+            renderPortfolioPreview();
+            renderFullPortfolio();
+            
+            // 가격 업데이트 알림
+            showNotification(`${portfolios.length}개 종목 가격이 업데이트되었습니다`, 'success', 3000);
+        }
+        
+        function animatePriceChange(stockCode, oldPrice, newPrice) {
+            // DOM에서 해당 종목 요소 찾기
+            const stockElements = document.querySelectorAll(`[data-id="${stockCode}"]`);
+            
+            stockElements.forEach(element => {
+                const priceElement = element.querySelector('.stock-price'); // 가격 표시 요소
+                if (priceElement) {
+                    // 가격 변화에 따른 색상 효과
+                    if (newPrice > oldPrice) {
+                        priceElement.classList.add('price-up');
+                        setTimeout(() => priceElement.classList.remove('price-up'), 2000);
+                    } else if (newPrice < oldPrice) {
+                        priceElement.classList.add('price-down');
+                        setTimeout(() => priceElement.classList.remove('price-down'), 2000);
+                    }
+                }
+            });
+        }
+        
+        // --- 알림 시스템 ---
+        function showNotification(message, type = 'info', duration = 5000) {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 translate-x-full`;
+            
+            const colors = {
+                success: 'bg-green-500 text-white',
+                error: 'bg-red-500 text-white',
+                warning: 'bg-yellow-500 text-white',
+                info: 'bg-blue-500 text-white'
+            };
+            
+            notification.className += ` ${colors[type] || colors.info}`;
+            notification.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium">${message}</span>
+                    <button onclick="this.parentElement.parentElement.remove()" class="ml-2 text-white hover:text-gray-200">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // 애니메이션으로 표시
+            setTimeout(() => {
+                notification.classList.remove('translate-x-full');
+            }, 100);
+            
+            // 자동 제거
+            setTimeout(() => {
+                notification.classList.add('translate-x-full');
+                setTimeout(() => notification.remove(), 300);
+            }, duration);
+        }
+        
+        function showStrategyChangeNotification(change) {
+            const strategyText = {
+                'BUY': '매수',
+                'SELL': '매도',
+                'HOLD': '관망'
+            };
+            
+            const message = `${change.stock_name} 전략이 "${strategyText[change.previous_strategy] || '없음'}"에서 "${strategyText[change.new_strategy]}"로 변경되었습니다`;
+            
+            showNotification(message, 'info', 8000);
+            
+            // 상세 알림 모달 표시 (선택사항)
+            showStrategyDetailModal(change);
+        }
+        
+        function showNewsAlert(data) {
+            const message = `${data.title.substring(0, 50)}...`;
+            showNotification(`중요 뉴스: ${message}`, 'warning', 10000);
+        }
+        
+        function showMarketAlert(data) {
+            showNotification(data.message, 'warning', 10000);
+        }
+        
+        function showStrategyDetailModal(change) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-2xl p-6 max-w-md w-full">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-gray-800">전략 변경 알림</h3>
+                        <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
+                            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xl mr-3">
+                                ${change.stock_name.charAt(0)}
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-800">${change.stock_name}</p>
+                                <p class="text-sm text-gray-500">${change.stock_code}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm text-gray-600">이전 전략</span>
+                                <span class="badge badge-hold">${change.previous_strategy || '없음'}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">새 전략</span>
+                                <span class="badge ${change.new_strategy === 'BUY' ? 'badge-buy' : change.new_strategy === 'SELL' ? 'badge-sell' : 'badge-hold'}">${change.new_strategy}</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <p class="text-sm text-gray-600 mb-1">분석 근거</p>
+                            <p class="text-sm text-gray-800 bg-gray-50 p-2 rounded">${change.reasoning}</p>
+                        </div>
+                        
+                        <div class="text-center">
+                            <p class="text-xs text-gray-500">신뢰도: ${(change.confidence * 100).toFixed(1)}%</p>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex space-x-3">
+                        <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg font-medium hover:bg-gray-300">
+                            확인
+                        </button>
+                        <button onclick="requestStrategyUpdate('${change.stock_code}')" class="flex-1 bg-blue-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-600">
+                            전략 재분석
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+        
+        // --- API 통신 함수 ---
+        async function loadPortfolioData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/portfolio/`);
+                if (response.ok) {
+                    const portfolios = await response.json();
+                    // API 데이터를 기존 형식으로 변환
+                    myPortfolioData = portfolios.map(p => ({
+                        id: p.stock_code,
+                        name: p.stock_name,
+                        icon: p.stock_name.charAt(0),
+                        price: p.current_price.toLocaleString(),
+                        change: '+0.00%', // 실제로는 시세 API에서 가져와야 함
+                        value: (p.quantity * p.current_price).toLocaleString(),
+                        strategy: '관망' // 최신 전략을 가져와야 함
+                    }));
+                    
+                    renderPortfolioPreview();
+                    renderFullPortfolio();
+                }
+            } catch (error) {
+                console.error('포트폴리오 데이터 로드 실패:', error);
+                showNotification('포트폴리오 데이터를 불러오는데 실패했습니다', 'error');
+            }
+        }
+        
+        async function requestStrategyUpdate(stockCode = null) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/portfolio/update-strategies`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    showNotification('전략 업데이트가 시작되었습니다', 'success');
+                } else {
+                    throw new Error('전략 업데이트 요청 실패');
+                }
+            } catch (error) {
+                console.error('전략 업데이트 요청 실패:', error);
+                showNotification('전략 업데이트 요청에 실패했습니다', 'error');
+            }
+        }
+        
+        async function requestPriceUpdate() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/portfolio/update-prices`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    showNotification('가격 업데이트가 시작되었습니다', 'success');
+                } else {
+                    throw new Error('가격 업데이트 요청 실패');
+                }
+            } catch (error) {
+                console.error('가격 업데이트 요청 실패:', error);
+                showNotification('가격 업데이트 요청에 실패했습니다', 'error');
+            }
+        }
+        
+        async function getMarketSummary() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/portfolio/market-summary`);
+                if (response.ok) {
+                    const data = await response.json();
+                    displayMarketStatus(data);
+                }
+            } catch (error) {
+                console.error('시장 요약 정보 조회 실패:', error);
+            }
+        }
+        
+        function displayMarketStatus(marketData) {
+            // 헤더에 시장 상태 표시
+            const header = document.querySelector('header');
+            if (header) {
+                let statusElement = header.querySelector('.market-status');
+                if (!statusElement) {
+                    statusElement = document.createElement('div');
+                    statusElement.className = 'market-status text-xs text-gray-500 mt-1';
+                    header.appendChild(statusElement);
+                }
+                
+                const statusColor = marketData.is_market_open ? 'text-green-600' : 'text-gray-500';
+                statusElement.innerHTML = `
+                    <span class="${statusColor}">
+                        ${marketData.market_status} | 업데이트: ${new Date(marketData.updated_at).toLocaleTimeString()}
+                    </span>
+                `;
+            }
+        }
+        
+        // --- 이벤트 리스너 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderPortfolioPreview();
+            renderWatchlist();
+            
+            // WebSocket 연결
+            connectWebSocket();
+            
+            // 시장 상태 정보 로드
+            getMarketSummary();
+            
+            // API에서 실제 데이터 로드 (선택사항)
+            // loadPortfolioData();
+            
+            // 주기적 가격 업데이트 (5분마다)
+            setInterval(() => {
+                if (isMarketTime()) {
+                    requestPriceUpdate();
+                }
+            }, 5 * 60 * 1000); // 5분
+            
+            // 시장 상태 정보 주기적 업데이트 (1분마다)
+            setInterval(getMarketSummary, 60 * 1000); // 1분
+        });
+
+        appContainer.addEventListener('click', function(e) {
+            const stockItem = e.target.closest('.stock-item');
+            if (stockItem) {
+                const stockId = stockItem.dataset.id;
+                const currentView = portfolioView.classList.contains('hidden') ? 'dashboard' : 'portfolio';
+                showDetailView(stockId, currentView);
+            }
+        });
+
+        backBtn.addEventListener('click', () => {
+            if (previousView === 'portfolio') {
+                showView(portfolioView);
+            } else {
+                showView(dashboardView);
+            }
+        });
+
+        viewAllPortfolioBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            renderFullPortfolio();
+            showView(portfolioView);
+            window.scrollTo(0, 0);
+        });
+
+        backToDashboardFromPortfolioBtn.addEventListener('click', () => {
+            showView(dashboardView);
+        });
+        
+        addStockBtn.addEventListener('click', showAddStockModal);
+        closeModalBtn.addEventListener('click', hideAddStockModal);
+        addStockModal.addEventListener('click', (e) => {
+            // 모달 배경 클릭 시 닫기
+            if (e.target === addStockModal) {
+                hideAddStockModal();
+            }
+        });
+
+        searchStockInput.addEventListener('input', (e) => {
+            renderSearchResults(e.target.value);
+        });
+        
+        searchResultsList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('add-new-stock-btn')) {
+                const stockId = e.target.dataset.id;
+                const stockToAdd = allStocks.find(s => s.id === stockId);
+                if (stockToAdd) {
+                    // 실제 앱에서는 보유 수량, 평단가 등을 입력받아야 합니다. 여기서는 간단히 추가합니다.
+                    myPortfolioData.unshift({ ...stockToAdd, value: stockToAdd.price, strategy: '관망' });
+                    renderPortfolioPreview();
+                    renderFullPortfolio();
+                    hideAddStockModal();
+                }
+            }
+        });
+
+        // 가격 업데이트 버튼 이벤트
+        document.getElementById('price-update-btn').addEventListener('click', () => {
+            requestPriceUpdate();
+        });
+        
+        // 시장 시간 체크 함수
+        function isMarketTime() {
+            const now = new Date();
+            const day = now.getDay(); // 0=일요일, 1=월요일, ..., 6=토요일
+            const hour = now.getHours();
+            const minute = now.getMinutes();
+            
+            // 주말 체크 (토요일=6, 일요일=0)
+            if (day === 0 || day === 6) {
+                return false;
+            }
+            
+            // 장 시간: 09:00 ~ 15:30
+            const marketStart = 9 * 60; // 9:00을 분으로 변환
+            const marketEnd = 15 * 60 + 30; // 15:30을 분으로 변환
+            const currentTime = hour * 60 + minute;
+            
+            return currentTime >= marketStart && currentTime <= marketEnd;
+        }
+
+    </script>
+</body>
+</html>
+
