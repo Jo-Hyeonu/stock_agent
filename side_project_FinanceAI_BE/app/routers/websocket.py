@@ -174,3 +174,79 @@ async def broadcast_message(
         "message": "메시지가 모든 연결된 사용자에게 전송되었습니다.",
         "recipients": len(notification_manager.get_connected_users())
     }
+
+@router.post("/ws/test-strategy-notification/{user_id}")
+async def test_strategy_notification(user_id: int):
+    """전략 변경 알림 테스트용 엔드포인트"""
+    
+    # 테스트용 전략 변경 알림 데이터
+    test_notification = {
+        "type": "STRATEGY_CHANGE",
+        "title": "포트폴리오 전략이 업데이트되었습니다",
+        "message": "AI가 새로운 투자 전략을 분석하여 포트폴리오를 최적화했습니다.",
+        "portfolio_id": 1,
+        "portfolio_name": "테스트 포트폴리오",
+        "changes": [
+            {
+                "stock_name": "삼성전자",
+                "action": "매수",
+                "reason": "기술적 분석 결과 상승 추세 확인",
+                "confidence": 85
+            },
+            {
+                "stock_name": "SK하이닉스",
+                "action": "매도",
+                "reason": "시장 변동성 증가로 리스크 관리",
+                "confidence": 78
+            }
+        ],
+        "timestamp": "2025-09-26T20:52:00Z",
+        "priority": "high"
+    }
+    
+    # 특정 사용자에게 알림 전송
+    await notification_manager.send_notification_to_user(user_id, test_notification)
+    
+    return {
+        "message": f"사용자 {user_id}에게 전략 변경 알림이 전송되었습니다.",
+        "notification": test_notification
+    }
+
+@router.post("/ws/test-all-notifications")
+async def test_all_notifications():
+    """모든 연결된 사용자에게 테스트 알림 전송"""
+    
+    test_notifications = [
+        {
+            "type": "STRATEGY_CHANGE",
+            "title": "포트폴리오 전략 업데이트",
+            "message": "새로운 AI 분석 결과가 반영되었습니다.",
+            "priority": "high"
+        },
+        {
+            "type": "NEWS_ALERT",
+            "title": "중요 뉴스 알림",
+            "message": "관심 종목에 대한 중요한 뉴스가 있습니다.",
+            "priority": "medium"
+        },
+        {
+            "type": "PRICE_ALERT",
+            "title": "가격 변동 알림",
+            "message": "포트폴리오 종목의 급격한 가격 변동이 감지되었습니다.",
+            "priority": "high"
+        }
+    ]
+    
+    connected_users = notification_manager.get_connected_users()
+    sent_count = 0
+    
+    for user_id in connected_users:
+        for notification in test_notifications:
+            await notification_manager.send_notification_to_user(user_id, notification)
+            sent_count += 1
+    
+    return {
+        "message": f"{len(connected_users)}명의 사용자에게 {sent_count}개의 테스트 알림이 전송되었습니다.",
+        "connected_users": connected_users,
+        "notifications_sent": sent_count
+    }

@@ -170,6 +170,30 @@ class NotificationManager:
         if user_id:
             return len(self.active_connections.get(user_id, []))
         return sum(len(connections) for connections in self.active_connections.values())
+    
+    async def send_notification_to_user(self, user_id: int, notification: Dict):
+        """특정 사용자에게 알림 전송"""
+        if user_id not in self.active_connections:
+            logger.info(f"사용자 {user_id}의 활성 연결이 없습니다.")
+            return
+        
+        # 알림에 타임스탬프 추가
+        notification["timestamp"] = datetime.utcnow().isoformat()
+        
+        # 연결된 모든 WebSocket에 전송
+        disconnected_sockets = []
+        for websocket in self.active_connections[user_id]:
+            try:
+                await websocket.send_text(json.dumps(notification, ensure_ascii=False))
+            except Exception as e:
+                logger.error(f"WebSocket 전송 오류: {e}")
+                disconnected_sockets.append(websocket)
+        
+        # 끊어진 연결 정리
+        for socket in disconnected_sockets:
+            self.disconnect(socket, user_id)
+        
+        logger.info(f"사용자 {user_id}에게 알림 전송 완료: {notification.get('type', 'UNKNOWN')}")
 
 # 전역 알림 매니저 인스턴스
 notification_manager = NotificationManager()

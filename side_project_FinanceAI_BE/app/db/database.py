@@ -27,11 +27,8 @@ def get_db():
 
 # 데이터베이스 테이블 생성
 def create_tables():
-    from ..models.portfolio import Base as PortfolioBase
-    from ..models.user import Base as UserBase
+    # 모든 모델을 임포트하여 Base.metadata에 등록
+    from ..models import user, portfolio
     
     # 모든 테이블 생성
     Base.metadata.create_all(bind=engine)
-    PortfolioBase.metadata.create_all(bind=engine)
-    if hasattr(UserBase, 'metadata'):
-        UserBase.metadata.create_all(bind=engine)

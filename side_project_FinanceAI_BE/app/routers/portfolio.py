@@ -30,6 +30,18 @@ class KeywordAdd(BaseModel):
     keyword: str
     priority: int = 1
 
+class StockSearchResponse(BaseModel):
+    stock_code: str
+    stock_name: str
+    market: str
+
+class WatchlistItem(BaseModel):
+    stock_code: str
+    stock_name: str
+
+class WatchlistResponse(BaseModel):
+    watchlist: List[WatchlistItem]
+
 class PortfolioResponse(BaseModel):
     id: int
     stock_code: str
@@ -477,3 +489,197 @@ async def get_price_update_status(
         "portfolios": portfolio_status,
         "last_check": datetime.now().isoformat()
     }
+
+# 종목 검색 API
+@router.get("/search-stocks", response_model=List[StockSearchResponse])
+async def search_stocks(query: str, limit: int = 20):
+    """종목 검색 API"""
+    try:
+        settings = get_settings()
+        stock_service = StockPriceService(settings.STOCK_API_KEY)
+        
+        # 공공데이터 포털에서 종목 검색
+        stocks = await stock_service.search_stocks(query, limit)
+        
+        return [
+            StockSearchResponse(
+                stock_code=stock["stock_code"],
+                stock_name=stock["stock_name"],
+                market=stock.get("market", "KOSPI")
+            )
+            for stock in stocks
+        ]
+        
+    except Exception as e:
+        logger.error(f"종목 검색 오류: {e}")
+        raise HTTPException(status_code=500, detail="종목 검색 중 오류가 발생했습니다.")
+
+# 개별 주식 가격 조회 API
+@router.get("/stock-price/{stock_code}/{stock_name}")
+async def get_stock_price(stock_code: str, stock_name: str):
+    """개별 주식 가격 조회 API"""
+    try:
+        settings = get_settings()
+        stock_service = StockPriceService(settings.STOCK_API_KEY)
+        
+        # 주식 가격 조회
+        stock_data = await stock_service.get_stock_price(stock_code, stock_name)
+        
+        if not stock_data:
+            raise HTTPException(status_code=404, detail="주식 정보를 찾을 수 없습니다")
+        
+        return stock_data
+    except Exception as e:
+        logger.error(f"주식 가격 조회 오류: {e}")
+        raise HTTPException(status_code=500, detail=f"주식 가격 조회 실패: {str(e)}")
+
+# 관심종목 관리 API
+@router.get("/watchlist/{user_id}", response_model=WatchlistResponse)
+async def get_watchlist(user_id: int, db: Session = Depends(get_db)):
+    """관심종목 목록 조회"""
+    try:
+        # 임시로 NewsKeyword 테이블을 관심종목으로 활용
+        keywords = db.query(NewsKeyword).filter(
+            NewsKeyword.portfolio_id.in_(
+                db.query(Portfolio.id).filter(Portfolio.user_id == user_id)
+            ),
+            NewsKeyword.is_active == True
+        ).all()
+        
+        watchlist = []
+        for keyword in keywords:
+            portfolio = db.query(Portfolio).filter(Portfolio.id == keyword.portfolio_id).first()
+            if portfolio:
+                watchlist.append(WatchlistItem(
+                    stock_code=portfolio.stock_code,
+                    stock_name=portfolio.stock_name
+                ))
+        
+        return WatchlistResponse(watchlist=watchlist)
+        
+    except Exception as e:
+        logger.error(f"관심종목 조회 오류: {e}")
+        raise HTTPException(status_code=500, detail="관심종목 조회 중 오류가 발생했습니다.")
+
+@router.post("/watchlist/{user_id}/add")
+async def add_to_watchlist(user_id: int, stock_code: str, stock_name: str, db: Session = Depends(get_db)):
+    """관심종목 추가"""
+    try:
+        # 임시 포트폴리오 생성 (수량 0으로)
+        existing = db.query(Portfolio).filter(
+            Portfolio.user_id == user_id,
+            Portfolio.stock_code == stock_code
+        ).first()
+        
+        if existing:
+            return {"message": "이미 관심종목에 등록된 종목입니다."}
+        
+        # 관심종목으로 포트폴리오 생성 (수량 0)
+        portfolio = Portfolio(
+            user_id=user_id,
+            stock_code=stock_code,
+            stock_name=stock_name,
+            quantity=0,
+            avg_price=0,
+            current_price=0
+        )
+        db.add(portfolio)
+        db.commit()
+        db.refresh(portfolio)
+        
+        # 키워드 추가
+        keyword = NewsKeyword(
+            portfolio_id=portfolio.id,
+            keyword=stock_name,
+            priority=1,
+            is_active=True
+        )
+        db.add(keyword)
+        db.commit()
+        
+        return {"message": f"{stock_name}이(가) 관심종목에 추가되었습니다."}
+        
+    except Exception as e:
+        logger.error(f"관심종목 추가 오류: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="관심종목 추가 중 오류가 발생했습니다.")
+
+@router.delete("/watchlist/{user_id}/remove")
+async def remove_from_watchlist(user_id: int, stock_code: str, db: Session = Depends(get_db)):
+    """관심종목 삭제"""
+    try:
+        portfolio = db.query(Portfolio).filter(
+            Portfolio.user_id == user_id,
+            Portfolio.stock_code == stock_code,
+            Portfolio.quantity == 0  # 관심종목 (수량 0)
+        ).first()
+        
+        if not portfolio:
+            raise HTTPException(status_code=404, detail="관심종목을 찾을 수 없습니다.")
+        
+        # 관련 키워드 삭제
+        db.query(NewsKeyword).filter(NewsKeyword.portfolio_id == portfolio.id).delete()
+        
+        # 포트폴리오 삭제
+        db.delete(portfolio)
+        db.commit()
+        
+        return {"message": "관심종목에서 삭제되었습니다."}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"관심종목 삭제 오류: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="관심종목 삭제 중 오류가 발생했습니다.")
+
+# 포트폴리오 실제 종목 추가 (평단가, 수량 포함)
+@router.post("/add-stock/{user_id}")
+async def add_stock_to_portfolio(
+    user_id: int, 
+    portfolio_data: PortfolioCreate, 
+    db: Session = Depends(get_db)
+):
+    """포트폴리오에 종목 추가 (평단가, 수량 포함)"""
+    try:
+        # 기존 종목 확인
+        existing = db.query(Portfolio).filter(
+            Portfolio.user_id == user_id,
+            Portfolio.stock_code == portfolio_data.stock_code
+        ).first()
+        
+        if existing and existing.quantity > 0:
+            # 기존 종목이 있으면 평균단가 계산하여 업데이트
+            total_cost = (existing.quantity * existing.avg_price) + (portfolio_data.quantity * portfolio_data.avg_price)
+            total_quantity = existing.quantity + portfolio_data.quantity
+            new_avg_price = total_cost / total_quantity
+            
+            existing.quantity = total_quantity
+            existing.avg_price = new_avg_price
+            
+        elif existing and existing.quantity == 0:
+            # 관심종목이었다면 실제 포트폴리오로 전환
+            existing.quantity = portfolio_data.quantity
+            existing.avg_price = portfolio_data.avg_price
+            
+        else:
+            # 새 종목 추가
+            portfolio = Portfolio(
+                user_id=user_id,
+                stock_code=portfolio_data.stock_code,
+                stock_name=portfolio_data.stock_name,
+                quantity=portfolio_data.quantity,
+                avg_price=portfolio_data.avg_price,
+                current_price=0
+            )
+            db.add(portfolio)
+        
+        db.commit()
+        
+        return {"message": f"{portfolio_data.stock_name}이(가) 포트폴리오에 추가되었습니다."}
+        
+    except Exception as e:
+        logger.error(f"종목 추가 오류: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="종목 추가 중 오류가 발생했습니다.")
+

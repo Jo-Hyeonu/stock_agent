@@ -97,7 +97,12 @@
             <div id="dashboard-view" class="fade-in">
                 <!-- 헤더, 자산 요약 등 기존 대시보드 내용은 동일합니다 -->
                 <header class="p-6 pb-4">
-                    <h1 class="text-2xl font-bold text-gray-800">대시보드</h1>
+                    <div class="flex justify-between items-center">
+                        <h1 class="text-2xl font-bold text-gray-800">대시보드</h1>
+                        <button id="test-notification-btn" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600 transition-colors">
+                            알림 테스트
+                        </button>
+                    </div>
                 </header>
 
                 <div class="px-6 pb-6">
@@ -120,7 +125,7 @@
                 <div class="px-6 pb-24">
                      <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-bold text-gray-800">관심 종목</h2>
-                        <a href="#" class="text-sm text-gray-500 hover:text-gray-800">편집</a>
+                        <button id="edit-watchlist-btn" class="text-sm text-blue-600 hover:text-blue-800">편집</button>
                     </div>
                     <div id="watchlist" class="space-y-3">
                         <!-- 관심 종목 아이템 -->
@@ -135,9 +140,12 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
                     </button>
                     <h1 class="text-xl font-bold text-gray-800">나의 포트폴리오</h1>
-                    <button id="add-stock-btn" class="text-blue-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    </button>
+                    <div class="flex items-center space-x-2">
+                        <button id="edit-portfolio-btn" class="text-sm text-blue-600 hover:text-blue-800">편집</button>
+                        <button id="add-stock-btn" class="text-blue-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </button>
+                    </div>
                 </header>
                 <div id="full-portfolio-list" class="px-6 pb-24 space-y-3">
                     <!-- 전체 포트폴리오 아이템이 여기에 렌더링됩니다 -->
@@ -201,6 +209,38 @@
             <div id="search-results-list" class="mt-4 max-h-60 overflow-y-auto">
                 <!-- 검색 결과가 여기에 표시됩니다. -->
             </div>
+            
+            <!-- 종목 추가 폼 -->
+            <div id="add-stock-form" class="hidden mt-6 p-4 bg-white rounded-lg border">
+                <h3 class="text-lg font-semibold mb-4">종목 정보 입력</h3>
+                <div class="selected-stock-info mb-4 p-3 bg-gray-50 rounded-lg">
+                    <div class="font-medium" id="selected-stock-name"></div>
+                    <div class="text-sm text-gray-600" id="selected-stock-code"></div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">매수량 (주)</label>
+                        <input type="number" id="stock-quantity" min="1" placeholder="보유 주식 수량을 입력하세요" 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">평균 매입가 (원)</label>
+                        <input type="number" id="stock-avg-price" min="0" step="1" placeholder="평균 매입가를 입력하세요" 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div class="flex space-x-3">
+                        <button id="add-to-watchlist-btn" class="flex-1 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                            관심종목 추가
+                        </button>
+                        <button id="add-to-portfolio-btn" class="flex-1 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            포트폴리오 추가
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -258,6 +298,15 @@
         const closeModalBtn = document.getElementById('close-modal-btn');
         const searchStockInput = document.getElementById('search-stock-input');
         const searchResultsList = document.getElementById('search-results-list');
+        const addStockForm = document.getElementById('add-stock-form');
+        const selectedStockName = document.getElementById('selected-stock-name');
+        const selectedStockCode = document.getElementById('selected-stock-code');
+        const stockQuantity = document.getElementById('stock-quantity');
+        const stockAvgPrice = document.getElementById('stock-avg-price');
+        const addToWatchlistBtn = document.getElementById('add-to-watchlist-btn');
+        const addToPortfolioBtn = document.getElementById('add-to-portfolio-btn');
+        const editWatchlistBtn = document.getElementById('edit-watchlist-btn');
+        const editPortfolioBtn = document.getElementById('edit-portfolio-btn');
 
         let previousView = 'dashboard'; // 상세 뷰에서 돌아갈 뷰를 추적
 
@@ -298,20 +347,146 @@
             fullPortfolioList.innerHTML = myPortfolioData.map(createStockItemHTML).join('');
         }
 
-        function renderWatchlist() {
-            watchlist.innerHTML = myWatchlistData.map(stock => `
-                <div data-id="${stock.id}" class="stock-item bg-white p-4 rounded-xl shadow-sm flex items-center cursor-pointer hover:bg-gray-100 transition-colors">
-                    <div class="w-10 h-10 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xl mr-4">${stock.icon}</div>
-                    <div class="flex-1">
-                        <span class="font-semibold text-gray-800">${stock.name}</span>
-                        ${stock.signal ? `<span class="ml-2 text-xs font-bold text-blue-600 animate-pulse">🔥 ${stock.signal}</span>` : ''}
+        async function renderWatchlist() {
+            try {
+                const watchlistData = await loadWatchlist();
+                const watchlistElement = document.getElementById('watchlist');
+                
+                if (watchlistData.length === 0) {
+                    watchlistElement.innerHTML = `
+                        <div class="text-center py-8 text-gray-500">
+                            <p>관심종목이 없습니다.</p>
+                            <p class="text-sm">종목을 검색하여 추가해보세요.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                watchlistElement.innerHTML = watchlistData.map(stock => `
+                    <div data-code="${stock.stock_code}" class="watchlist-item bg-white p-4 rounded-xl shadow-sm flex items-center cursor-pointer hover:bg-gray-100 transition-colors">
+                        <div class="w-10 h-10 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center font-bold text-xl mr-4">
+                            ${stock.stock_name.charAt(0)}
+                        </div>
+                        <div class="flex-1">
+                            <span class="font-semibold text-gray-800">${stock.stock_name}</span>
+                            <p class="text-sm text-gray-500">${stock.stock_code}</p>
+                        </div>
+                        <div class="text-right">
+                            <button class="remove-watchlist-btn text-red-500 hover:text-red-700 p-1" data-code="${stock.stock_code}" style="display: none;">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <span class="font-semibold text-gray-800">₩ ${stock.price}</span>
-                        <p class="text-sm ${stock.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}">${stock.change}</p>
+                `).join('');
+                
+            } catch (error) {
+                console.error('관심종목 렌더링 오류:', error);
+                document.getElementById('watchlist').innerHTML = `
+                    <div class="text-center py-8 text-red-500">
+                        <p>관심종목 로드 중 오류가 발생했습니다.</p>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }
+        }
+        
+        let isEditingWatchlist = false;
+        let isEditingPortfolio = false;
+        
+        function toggleWatchlistEdit() {
+            isEditingWatchlist = !isEditingWatchlist;
+            const removeButtons = document.querySelectorAll('.remove-watchlist-btn');
+            const editBtn = document.getElementById('edit-watchlist-btn');
+            
+            if (isEditingWatchlist) {
+                removeButtons.forEach(btn => btn.style.display = 'block');
+                editBtn.textContent = '완료';
+                editBtn.classList.add('text-red-600');
+                editBtn.classList.remove('text-blue-600');
+            } else {
+                removeButtons.forEach(btn => btn.style.display = 'none');
+                editBtn.textContent = '편집';
+                editBtn.classList.add('text-blue-600');
+                editBtn.classList.remove('text-red-600');
+            }
+        }
+        
+        function togglePortfolioEdit() {
+            isEditingPortfolio = !isEditingPortfolio;
+            const editBtn = document.getElementById('edit-portfolio-btn');
+            
+            if (isEditingPortfolio) {
+                editBtn.textContent = '완료';
+                editBtn.classList.add('text-red-600');
+                editBtn.classList.remove('text-blue-600');
+                renderFullPortfolioWithDelete();
+            } else {
+                editBtn.textContent = '편집';
+                editBtn.classList.add('text-blue-600');
+                editBtn.classList.remove('text-red-600');
+                renderFullPortfolio();
+            }
+        }
+        
+        function renderFullPortfolioWithDelete() {
+            const portfolioWithDeleteButtons = myPortfolioData.map(stock => {
+                return `
+                    <div data-id="${stock.id}" class="stock-item bg-white p-4 rounded-xl shadow-sm flex items-center cursor-pointer hover:bg-gray-100 transition-colors">
+                        <div class="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xl mr-4">${stock.icon}</div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center">
+                                <span class="font-semibold text-gray-800">${stock.name}</span>
+                                <span class="font-bold text-gray-900 stock-price">₩ ${stock.value || stock.price}</span>
+                            </div>
+                            <div class="flex justify-between items-center mt-1">
+                                <div class="text-sm flex items-center ${stock.change.startsWith('+') ? 'text-green-600' : 'text-red-600'}">
+                                    <span>${stock.value ? `₩ ${stock.price}` : ''}</span>
+                                    <span class="ml-2">(${stock.change})</span>
+                                </div>
+                                ${stock.strategy ? getStrategyBadge(stock.strategy) : ''}
+                            </div>
+                        </div>
+                        <button class="remove-portfolio-btn text-red-500 hover:text-red-700 p-2 ml-2" data-id="${stock.id}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+            
+            fullPortfolioList.innerHTML = portfolioWithDeleteButtons;
+        }
+        
+        async function removeFromPortfolio(portfolioId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/portfolio/${portfolioId}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification(result.message || '포트폴리오에서 삭제되었습니다.', 'success');
+                    
+                    // 로컬 데이터 업데이트
+                    myPortfolioData = myPortfolioData.filter(item => item.id != portfolioId);
+                    
+                    // UI 새로고침
+                    renderPortfolioPreview();
+                    if (isEditingPortfolio) {
+                        renderFullPortfolioWithDelete();
+                    } else {
+                        renderFullPortfolio();
+                    }
+                } else {
+                    showNotification(result.detail || '포트폴리오 삭제에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('포트폴리오 삭제 오류:', error);
+                showNotification('포트폴리오 삭제 중 오류가 발생했습니다.', 'error');
+            }
         }
         
         function renderDetail(stockId) {
@@ -321,30 +496,40 @@
             detailContent.innerHTML = `<h2 class="text-2xl font-bold">${stockData.name} 상세 정보</h2>`;
         }
 
-        function renderSearchResults(query) {
-            if (!query) {
-                searchResultsList.innerHTML = `<p class="text-center text-gray-500">검색어를 입력해주세요.</p>`;
+        async function renderSearchResults(query) {
+            if (!query || query.length < 2) {
+                searchResultsList.innerHTML = `<p class="text-center text-gray-500">2글자 이상 입력해주세요.</p>`;
                 return;
             }
-            const results = allStocks.filter(stock => 
-                (stock.name.toLowerCase().includes(query.toLowerCase()) || stock.id.includes(query)) &&
-                !myPortfolioData.some(p => p.id === stock.id)
-            );
             
-            if (results.length === 0) {
-                 searchResultsList.innerHTML = `<p class="text-center text-gray-500">검색 결과가 없습니다.</p>`;
-                 return;
-            }
+            try {
+                searchResultsList.innerHTML = `<p class="text-center text-gray-500">검색 중...</p>`;
+                
+                const response = await fetch(`${API_BASE_URL}/api/portfolio/search-stocks?query=${encodeURIComponent(query)}&limit=20`);
+                const results = await response.json();
+                
+                if (results.length === 0) {
+                    searchResultsList.innerHTML = `<p class="text-center text-gray-500">검색 결과가 없습니다.</p>`;
+                    return;
+                }
 
-            searchResultsList.innerHTML = results.map(stock => `
-                <div class="flex items-center justify-between p-3 hover:bg-gray-200 rounded-lg">
-                    <div>
-                        <p class="font-semibold">${stock.name}</p>
-                        <p class="text-sm text-gray-500">${stock.id}</p>
+                searchResultsList.innerHTML = results.map(stock => `
+                    <div class="flex items-center justify-between p-3 hover:bg-gray-100 rounded-lg cursor-pointer stock-search-item" 
+                         data-code="${stock.stock_code}" data-name="${stock.stock_name}" data-market="${stock.market}">
+                        <div>
+                            <p class="font-semibold">${stock.stock_name}</p>
+                            <p class="text-sm text-gray-500">${stock.stock_code} · ${stock.market}</p>
+                        </div>
+                        <button class="select-stock-btn bg-blue-500 text-white text-sm font-semibold px-4 py-1.5 rounded-full hover:bg-blue-600">
+                            선택
+                        </button>
                     </div>
-                    <button data-id="${stock.id}" class="add-new-stock-btn bg-blue-500 text-white text-sm font-semibold px-4 py-1.5 rounded-full hover:bg-blue-600">추가</button>
-                </div>
-            `).join('');
+                `).join('');
+                
+            } catch (error) {
+                console.error('종목 검색 오류:', error);
+                searchResultsList.innerHTML = `<p class="text-center text-red-500">검색 중 오류가 발생했습니다.</p>`;
+            }
         }
 
         // --- 뷰 전환 함수 ---
@@ -369,7 +554,121 @@
         
         function hideAddStockModal() {
             addStockModal.classList.add('hidden');
+            resetAddStockForm();
+        }
+        
+        function resetAddStockForm() {
             searchStockInput.value = '';
+            searchResultsList.innerHTML = '';
+            addStockForm.classList.add('hidden');
+            selectedStockName.textContent = '';
+            selectedStockCode.textContent = '';
+            stockQuantity.value = '';
+            stockAvgPrice.value = '';
+        }
+        
+        function showStockForm(stockCode, stockName, market) {
+            selectedStockName.textContent = stockName;
+            selectedStockCode.textContent = `${stockCode} · ${market}`;
+            addStockForm.classList.remove('hidden');
+            addStockForm.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        async function addToWatchlist(stockCode, stockName) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/portfolio/watchlist/1/add?stock_code=${stockCode}&stock_name=${encodeURIComponent(stockName)}`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification(result.message || '관심종목에 추가되었습니다.', 'success');
+                    hideAddStockModal();
+                    renderWatchlist(); // 관심종목 목록 새로고침
+                } else {
+                    showNotification(result.detail || '관심종목 추가에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('관심종목 추가 오류:', error);
+                showNotification('관심종목 추가 중 오류가 발생했습니다.', 'error');
+            }
+        }
+        
+        async function addToPortfolio(stockCode, stockName, quantity, avgPrice) {
+            if (!quantity || !avgPrice || quantity <= 0 || avgPrice <= 0) {
+                showNotification('수량과 평균매입가를 올바르게 입력해주세요.', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/portfolio/add-stock/1`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        stock_code: stockCode,
+                        stock_name: stockName,
+                        quantity: parseInt(quantity),
+                        avg_price: parseFloat(avgPrice)
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification(result.message || '포트폴리오에 추가되었습니다.', 'success');
+                    hideAddStockModal();
+                    renderPortfolioPreview(); // 포트폴리오 목록 새로고침
+                    renderFullPortfolio();
+                } else {
+                    showNotification(result.detail || '포트폴리오 추가에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('포트폴리오 추가 오류:', error);
+                showNotification('포트폴리오 추가 중 오류가 발생했습니다.', 'error');
+            }
+        }
+        
+        async function loadWatchlist() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/portfolio/watchlist/1`);
+                const data = await response.json();
+                return data.watchlist || [];
+            } catch (error) {
+                console.error('관심종목 로드 오류:', error);
+                return [];
+            }
+        }
+        
+        async function removeFromWatchlist(stockCode) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/portfolio/watchlist/1/remove?stock_code=${stockCode}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showNotification(result.message || '관심종목에서 삭제되었습니다.', 'success');
+                    renderWatchlist(); // 관심종목 목록 새로고침
+                } else {
+                    showNotification(result.detail || '관심종목 삭제에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                console.error('관심종목 삭제 오류:', error);
+                showNotification('관심종목 삭제 중 오류가 발생했습니다.', 'error');
+            }
+        }
+        
+        function showNotification(message, type = 'info') {
+            // 알림 표시 함수 (기존에 있으면 사용, 없으면 간단한 alert로 대체)
+            if (typeof showAlert === 'function') {
+                showAlert(message, type);
+            } else {
+                alert(message);
+            }
         }
 
 
@@ -421,15 +720,20 @@
             
             switch (message.type) {
                 case 'STRATEGY_CHANGE':
-                    handleStrategyChangeNotification(message.data);
+                    // 전략 변경 알림 처리
+                    showStrategyChangeNotification(message);
                     break;
                     
                 case 'NEWS_ALERT':
-                    handleNewsAlert(message.data);
+                    handleNewsAlert(message);
                     break;
                     
                 case 'MARKET_ALERT':
-                    handleMarketAlert(message.data);
+                    handleMarketAlert(message);
+                    break;
+                    
+                case 'PRICE_ALERT':
+                    handlePriceAlert(message);
                     break;
                     
                 case 'CONNECTION_ESTABLISHED':
@@ -574,19 +878,26 @@
             }, duration);
         }
         
-        function showStrategyChangeNotification(change) {
-            const strategyText = {
-                'BUY': '매수',
-                'SELL': '매도',
-                'HOLD': '관망'
-            };
+        function showStrategyChangeNotification(notification) {
+            console.log('전략 변경 알림 처리:', notification);
             
-            const message = `${change.stock_name} 전략이 "${strategyText[change.previous_strategy] || '없음'}"에서 "${strategyText[change.new_strategy]}"로 변경되었습니다`;
+            // 기본 알림 표시
+            showNotification(notification.title || '전략 변경 알림', 'info', 8000);
             
-            showNotification(message, 'info', 8000);
-            
-            // 상세 알림 모달 표시 (선택사항)
-            showStrategyDetailModal(change);
+            // 상세 알림 모달 표시
+            showStrategyDetailModal(notification);
+        }
+        
+        function handleNewsAlert(notification) {
+            showNotification(notification.title || '뉴스 알림', 'info', 5000);
+        }
+        
+        function handleMarketAlert(notification) {
+            showNotification(notification.title || '시장 알림', 'warning', 5000);
+        }
+        
+        function handlePriceAlert(notification) {
+            showNotification(notification.title || '가격 알림', 'warning', 5000);
         }
         
         function showNewsAlert(data) {
@@ -598,13 +909,33 @@
             showNotification(data.message, 'warning', 10000);
         }
         
-        function showStrategyDetailModal(change) {
+        function showStrategyDetailModal(notification) {
             const modal = document.createElement('div');
             modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4';
+            
+            // 전략 변경 내용 생성
+            let changesHtml = '';
+            if (notification.changes && Array.isArray(notification.changes)) {
+                changesHtml = notification.changes.map(change => `
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-semibold text-gray-800">${change.stock_name}</span>
+                            <span class="px-2 py-1 rounded text-xs font-medium ${
+                                change.action === '매수' ? 'bg-green-100 text-green-800' : 
+                                change.action === '매도' ? 'bg-red-100 text-red-800' : 
+                                'bg-gray-100 text-gray-800'
+                            }">${change.action}</span>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-1">${change.reason}</p>
+                        <p class="text-xs text-gray-500">신뢰도: ${change.confidence}%</p>
+                    </div>
+                `).join('');
+            }
+            
             modal.innerHTML = `
-                <div class="bg-white rounded-2xl p-6 max-w-md w-full">
+                <div class="bg-white rounded-2xl p-6 max-w-md w-full max-h-[80vh] overflow-y-auto">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-bold text-gray-800">전략 변경 알림</h3>
+                        <h3 class="text-lg font-bold text-gray-800">${notification.title || '전략 변경 알림'}</h3>
                         <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700">
                             <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
@@ -612,50 +943,33 @@
                         </button>
                     </div>
                     
-                    <div class="space-y-3">
-                        <div class="flex items-center">
-                            <div class="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xl mr-3">
-                                ${change.stock_name.charAt(0)}
-                            </div>
-                            <div>
-                                <p class="font-semibold text-gray-800">${change.stock_name}</p>
-                                <p class="text-sm text-gray-500">${change.stock_code}</p>
-                            </div>
-                        </div>
-                        
-                        <div class="bg-gray-50 p-3 rounded-lg">
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="text-sm text-gray-600">이전 전략</span>
-                                <span class="badge badge-hold">${change.previous_strategy || '없음'}</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-sm text-gray-600">새 전략</span>
-                                <span class="badge ${change.new_strategy === 'BUY' ? 'badge-buy' : change.new_strategy === 'SELL' ? 'badge-sell' : 'badge-hold'}">${change.new_strategy}</span>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <p class="text-sm text-gray-600 mb-1">분석 근거</p>
-                            <p class="text-sm text-gray-800 bg-gray-50 p-2 rounded">${change.reasoning}</p>
-                        </div>
-                        
-                        <div class="text-center">
-                            <p class="text-xs text-gray-500">신뢰도: ${(change.confidence * 100).toFixed(1)}%</p>
-                        </div>
+                    <div class="mb-4">
+                        <p class="text-gray-600 text-sm">${notification.message || '포트폴리오 전략이 업데이트되었습니다.'}</p>
                     </div>
                     
-                    <div class="mt-6 flex space-x-3">
-                        <button onclick="this.closest('.fixed').remove()" class="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg font-medium hover:bg-gray-300">
+                    ${changesHtml ? `
+                        <div class="space-y-3">
+                            <h4 class="font-semibold text-gray-800">변경 사항</h4>
+                            ${changesHtml}
+                        </div>
+                    ` : ''}
+                    
+                    <div class="mt-6 flex justify-end">
+                        <button onclick="this.closest('.fixed').remove()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors">
                             확인
-                        </button>
-                        <button onclick="requestStrategyUpdate('${change.stock_code}')" class="flex-1 bg-blue-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-600">
-                            전략 재분석
                         </button>
                     </div>
                 </div>
             `;
             
             document.body.appendChild(modal);
+            
+            // 10초 후 자동 닫기
+            setTimeout(() => {
+                if (modal.parentNode) {
+                    modal.remove();
+                }
+            }, 10000);
         }
         
         // --- API 통신 함수 ---
@@ -823,22 +1137,101 @@
         });
         
         searchResultsList.addEventListener('click', (e) => {
-            if (e.target.classList.contains('add-new-stock-btn')) {
-                const stockId = e.target.dataset.id;
-                const stockToAdd = allStocks.find(s => s.id === stockId);
-                if (stockToAdd) {
-                    // 실제 앱에서는 보유 수량, 평단가 등을 입력받아야 합니다. 여기서는 간단히 추가합니다.
-                    myPortfolioData.unshift({ ...stockToAdd, value: stockToAdd.price, strategy: '관망' });
-                    renderPortfolioPreview();
-                    renderFullPortfolio();
-                    hideAddStockModal();
+            if (e.target.classList.contains('select-stock-btn')) {
+                const stockItem = e.target.closest('.stock-search-item');
+                const stockCode = stockItem.dataset.code;
+                const stockName = stockItem.dataset.name;
+                const market = stockItem.dataset.market;
+                
+                showStockForm(stockCode, stockName, market);
+            }
+        });
+        
+        // 관심종목 편집 버튼
+        editWatchlistBtn.addEventListener('click', toggleWatchlistEdit);
+        
+        // 포트폴리오 편집 버튼
+        editPortfolioBtn.addEventListener('click', togglePortfolioEdit);
+        
+        // 관심종목 삭제 버튼들 (이벤트 위임 사용)
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-watchlist-btn')) {
+                const btn = e.target.closest('.remove-watchlist-btn');
+                const stockCode = btn.dataset.code;
+                
+                if (confirm('관심종목에서 삭제하시겠습니까?')) {
+                    removeFromWatchlist(stockCode);
                 }
+            }
+            
+            // 포트폴리오 삭제 버튼들
+            if (e.target.closest('.remove-portfolio-btn')) {
+                const btn = e.target.closest('.remove-portfolio-btn');
+                const portfolioId = btn.dataset.id;
+                
+                if (confirm('포트폴리오에서 삭제하시겠습니까?')) {
+                    removeFromPortfolio(portfolioId);
+                }
+            }
+        });
+        
+        // 종목 추가 폼 버튼들
+        addToWatchlistBtn.addEventListener('click', () => {
+            const stockCode = selectedStockCode.textContent.split(' · ')[0];
+            const stockName = selectedStockName.textContent;
+            
+            if (stockCode && stockName) {
+                addToWatchlist(stockCode, stockName);
+            }
+        });
+        
+        addToPortfolioBtn.addEventListener('click', () => {
+            const stockCode = selectedStockCode.textContent.split(' · ')[0];
+            const stockName = selectedStockName.textContent;
+            const quantity = stockQuantity.value;
+            const avgPrice = stockAvgPrice.value;
+            
+            if (stockCode && stockName) {
+                addToPortfolio(stockCode, stockName, quantity, avgPrice);
             }
         });
 
         // 가격 업데이트 버튼 이벤트
         document.getElementById('price-update-btn').addEventListener('click', () => {
             requestPriceUpdate();
+        });
+        
+        // 알림 테스트 버튼 이벤트
+        document.getElementById('test-notification-btn').addEventListener('click', () => {
+            // 테스트용 전략 변경 알림 데이터
+            const testNotification = {
+                type: "STRATEGY_CHANGE",
+                title: "포트폴리오 전략이 업데이트되었습니다",
+                message: "AI가 새로운 투자 전략을 분석하여 포트폴리오를 최적화했습니다.",
+                portfolio_id: 1,
+                portfolio_name: "테스트 포트폴리오",
+                changes: [
+                    {
+                        stock_name: "삼성전자",
+                        action: "매수",
+                        reason: "기술적 분석 결과 상승 추세 확인",
+                        confidence: 85
+                    },
+                    {
+                        stock_name: "SK하이닉스",
+                        action: "매도",
+                        reason: "시장 변동성 증가로 리스크 관리",
+                        confidence: 78
+                    }
+                ],
+                timestamp: new Date().toISOString(),
+                priority: "high"
+            };
+            
+            // WebSocket 메시지 핸들러를 직접 호출
+            handleWebSocketMessage(testNotification);
+            
+            console.log('알림 테스트 실행:', testNotification);
         });
         
         // 시장 시간 체크 함수
